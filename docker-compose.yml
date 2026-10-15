@@ -10,16 +10,16 @@ services:
     image: spike-dev-runner:local
     container_name: spike-dev-runner
     hostname: spike-dev-runner
-
+    
     # Security Guardrails
     read_only: true
     cap_drop:
       - ALL
     security_opt:
       - no-new-privileges:true
-
+    
     # Writable tmpfs scratchpads required for read_only rootfs
-    # Note: mode=1777 (or explicit uid/gid) is essential because tmpfs defaults to root:root 0755
+    # Note: mode=1777 is essential because tmpfs defaults to root:root 0755
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=64m,mode=1777
       - /app/temp:rw,size=128m,mode=1777
@@ -28,24 +28,43 @@ services:
     volumes:
       # Read-only configuration mount
       - ./config/application.properties:/app/config/application.properties:ro
-
+      
       # Read-write source code package mount
       - ./packages/SamplePackage:/app/packages/SamplePackage:rw
 
-  # Sweeper / Janitor Tool for Reconciling Permissions on Linux / Rootless Docker
+  # Sweeper / Janitor Tool: Namespace-Aware Permission Normalization
   sweeper:
-    image: alpine:3.20
+    image: alpine:3
     container_name: spike-dev-sweeper
     profiles:
       - sweeper
       - tools
+    environment:
+      - DEV_UID=${DEV_UID:-1000}
+      - DEV_GID=${DEV_GID:-0}
     volumes:
       - ./packages:/workspace/packages:rw
-    # In Rootless Docker, UID 0 in guest maps to host developer UID (e.g. 1000)
     command: >
       sh -c "
-        echo '=== Sweeper: Normalizing permissions on bind-mounted packages ===';
-        chown -R ${DEV_UID:-1000}:${DEV_GID:-1000} /workspace/packages;
+        echo '=== Sweeper: Detecting User Namespace Translation ===';
+        IS_USERNS=0;
+        if [ -f /proc/self/uid_map ]; then
+          MAPPED_UID=\$$(awk '$$1 == 0 {print $$2}' /proc/self/uid_map 2>/dev/null);
+          if [ -n \"\$$MAPPED_UID\" ] && [ \"\$$MAPPED_UID\" -ne 0 ]; then
+            IS_USERNS=1;
+            echo \"[INFO] Rootless User Namespace detected (guest UID 0 maps to host UID \$$MAPPED_UID).\";
+          fi;
+        fi;
+        if [ \"\$$IS_USERNS\" -eq 1 ]; then
+          TARGET_UID=0;
+          TARGET_GID=0;
+          echo \"[INFO] Using rootless target ownership 0:0 (translates to host UID \$$MAPPED_UID on filesystem).\";
+        else
+          TARGET_UID=\$${DEV_UID:-1000};
+          TARGET_GID=\$${DEV_GID:-0};
+          echo \"[INFO] Standard/Host target ownership: \$$TARGET_UID:\$$TARGET_GID.\";
+        fi;
+        chown -R \$$TARGET_UID:\$$TARGET_GID /workspace/packages;
         chmod -R u+rwX,g+rwX,o+rX /workspace/packages;
-        echo '=== Sweeper: Done. Permissions normalized for host developer ===';
+        echo '=== Sweeper: Permissions successfully normalized ===';
       "

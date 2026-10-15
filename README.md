@@ -4,6 +4,17 @@ This repository investigates and provides solutions for running containerized de
 
 The test setup is **100% self-contained and entitlement-free**, built on lightweight Alpine Linux images to easily reproduce and verify permission behaviors across all targets.
 
+## Quick Start (Automated Test Execution)
+
+* **Linux / macOS**:
+  ```bash
+  ./test.sh
+  ```
+* **Windows (Command Prompt / PowerShell)**:
+  ```cmd
+  test.bat
+  ```
+
 ## Key Documents
 
 * **[Spike Requirements](SPIKE_REQUIREMENTS.md)**: Original problem description and host utilization scenarios.
@@ -22,11 +33,13 @@ The test setup is **100% self-contained and entitlement-free**, built on lightwe
 ├── OPERATIONAL_GUIDE.md            # Step-by-step verification guide
 ├── README.md                       # Repository overview
 ├── SPIKE_REQUIREMENTS.md           # Requirements and scope
+├── test.sh                         # Automated test script for Linux / macOS
+├── test.bat                        # Automated test script for Windows
 ├── build/
 │   └── Dockerfile                  # Self-contained Alpine image with non-root user (UID 1824)
 ├── config/
 │   └── application.properties      # Read-only configuration mount example
-├── docker-compose.yml              # Guardrailed compose runner & sweeper profile
+├── docker-compose.yml              # Guardrailed compose runner & namespace-aware sweeper
 └── packages/
     └── SamplePackage/              # Read-write package bind mount
 ```
