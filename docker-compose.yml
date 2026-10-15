@@ -1,0 +1,51 @@
+services:
+  # Primary Development Test Container with Security Guardrails
+  dev-runner:
+    build:
+      context: ./build
+      args:
+        - ALPINE_VERSION=${ALPINE_VERSION:-3.20}
+        - DEV_UID=${DEV_UID:-1824}
+        - DEV_GID=${DEV_GID:-1824}
+    image: spike-dev-runner:local
+    container_name: spike-dev-runner
+    hostname: spike-dev-runner
+
+    # Security Guardrails
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+
+    # Writable tmpfs scratchpads required for read_only rootfs
+    # Note: mode=1777 (or explicit uid/gid) is essential because tmpfs defaults to root:root 0755
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m,mode=1777
+      - /app/temp:rw,size=128m,mode=1777
+      - /app/logs:rw,size=128m,mode=1777
+
+    volumes:
+      # Read-only configuration mount
+      - ./config/application.properties:/app/config/application.properties:ro
+
+      # Read-write source code package mount
+      - ./packages/SamplePackage:/app/packages/SamplePackage:rw
+
+  # Sweeper / Janitor Tool for Reconciling Permissions on Linux / Rootless Docker
+  sweeper:
+    image: alpine:3.20
+    container_name: spike-dev-sweeper
+    profiles:
+      - sweeper
+      - tools
+    volumes:
+      - ./packages:/workspace/packages:rw
+    # In Rootless Docker, UID 0 in guest maps to host developer UID (e.g. 1000)
+    command: >
+      sh -c "
+        echo '=== Sweeper: Normalizing permissions on bind-mounted packages ===';
+        chown -R ${DEV_UID:-1000}:${DEV_GID:-1000} /workspace/packages;
+        chmod -R u+rwX,g+rwX,o+rX /workspace/packages;
+        echo '=== Sweeper: Done. Permissions normalized for host developer ===';
+      "
