@@ -20,8 +20,9 @@ run_test_iteration() {
   echo " ### Configured Target -> DEV_UID=${TEST_UID} | DEV_GID=${TEST_GID}"
   echo "######################################################################"
 
-  # Clean previous test files in package mount
+  # Clean previous test files in package mount and ensure directory is accessible to container users
   rm -f packages/SamplePackage/file_by_devuser.txt packages/SamplePackage/file_by_root.txt
+  chmod -R a+rwX packages/
 
   # Export environment variables for Docker Compose substitution
   export DEV_UID="${TEST_UID}"

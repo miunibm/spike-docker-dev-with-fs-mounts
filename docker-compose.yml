@@ -65,6 +65,6 @@ services:
           echo \"[INFO] Standard/Host target ownership: \$$TARGET_UID:\$$TARGET_GID.\";
         fi;
         chown -R \$$TARGET_UID:\$$TARGET_GID /workspace/packages;
-        chmod -R u+rwX,g+rwX,o+rX /workspace/packages;
+        chmod -R u+rwX,g+rwX,o+rwX /workspace/packages;
         echo '=== Sweeper: Permissions successfully normalized ===';
       "

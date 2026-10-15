@@ -43,9 +43,10 @@ When `read_only: true` is enabled, containers require `tmpfs` mounts for tempora
 |   |--> User Namespace (userns)                                                                    |
 |          |-- Container UID 0 (root)   =======> Maps to Host UID 1000 (Developer)                  |
 |          |-- Container UID 1824 (MSR) =======> Maps to Host UID 100000 + 1824 - 1 = 101823        |
-| - Files created by MSR (UID 1824) are written to host disk as UID 101823!                         |
-| - Host Developer (UID 1000) gets "Permission Denied" editing or deleting those files!              |
-| - Solution: Companion Sweeper Service running as Container Root (Host UID 1000) or dynamic remap. |
+| - Host directory owned by UID 1000 (0755) appears as owned by root:root (0755) in guest.          |
+| - Guest non-root user (UID 1824) gets "Permission denied" creating files unless directory is a+rwX.|
+| - Files created by MSR (UID 1824) are written to host disk as subordinate UID (e.g. 166535)!       |
+| - Solution: Set workspace packages to a+rwX and use Sweeper to reset ownership to 0:0 / 1000:1000.  |
 +---------------------------------------------------------------------------------------------------+
 ```
 
